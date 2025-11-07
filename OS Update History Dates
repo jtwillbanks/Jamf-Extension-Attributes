@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Check JQ
+if ! command -v jq &> /dev/null
+then
+    echo "<result>Error: jq command not found. Please install jq (e.g., via Homebrew).</result>"
+    exit 0
+fi
+
+# filter output for just macOS
+macos_history=$(system_profiler SPInstallHistoryDataType -json | \
+                jq -r '."SPInstallHistoryDataType"[] | select(._name | startswith("macOS")) | ._name + "|" + .install_date')
+
+# Array
+list=()
+
+# Process with pipe
+while IFS='|' read -r full_name date_raw; do
+    
+    # Skip empty
+    if [[ -z "$full_name" ]]; then
+        continue
+    fi
+    
+    # Format date
+    install_date_formatted=$(date -jf "%Y-%m-%dT%T" "$date_raw" +"%D %l:%M %p")
+    
+    list+=("${full_name} ${install_date_formatted}")
+
+done <<< "$macos_history"
+
+# Output
+echo "<result>$(printf '%s\n' "${list[@]}")</result>"
