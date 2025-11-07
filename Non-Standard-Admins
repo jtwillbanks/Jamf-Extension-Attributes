@@ -1,0 +1,31 @@
+#!/usr/bin/env -i /bin/bash
+
+# Force the script to quit if any error encountered
+set -e
+
+# Initialize array variable to hold admin usernames
+list=()
+
+# Define an array of known administrative accounts to exclude
+declare -a knownadmins=("admin1" "admin2" "admin3") # Add your known admin accounts here
+
+# For all users with a userID above 500 (aka: not hidden) check if they are an admin, if so, AND not a known administrative service account, add to list array
+for username in $(/usr/bin/dscl . list /Users UniqueID | /usr/bin/awk '$2 > 500 { print $1 }'); do
+    if [[ $(/usr/bin/dsmemberutil checkmembership -U "${username}" -G admin) != *not* ]]; then
+        # Check if the current username is NOT in the knownadmins array
+        is_known_admin=false
+        for known_admin in "${knownadmins[@]}"; do
+            if [[ "${username}" == "${known_admin}" ]]; then
+                is_known_admin=true
+                break
+            fi
+        done
+
+        if ! ${is_known_admin}; then
+            list+=("${username}")
+        fi
+    fi
+done
+
+# Print all items in the list array
+/bin/echo "<result>${list[@]}</result>"
